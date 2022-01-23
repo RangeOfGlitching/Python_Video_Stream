@@ -7,6 +7,8 @@ import cv2
 from base64 import b64encode
 import json
 
+from numpy import uint8
+
 HEADER = 64
 PORT = 5050
 SERVER = "192.168.50.182"
@@ -61,7 +63,7 @@ config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 if device_product_line == 'L500':
     config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
 else:
-    config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
 # Start streaming
 profile = pipeline.start(config)
@@ -102,19 +104,29 @@ try:
 
         depth_image = np.asanyarray(aligned_depth_frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
-
+        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         # Remove background - Set pixels further than clipping_distance to black
-        black_color = 0
-        depth_image_3d = np.dstack(
-            (depth_image, depth_image, depth_image))  # depth image is 1 channel, color is 3 channels
-        bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), black_color, color_image)
 
-        bg_removed_gray = cv2.cvtColor(bg_removed, cv2.COLOR_BGR2GRAY)
-        new_frame_time = time.time()
-        fps = 1 / (new_frame_time - prev_frame_time)
-        prev_frame_time = new_frame_time
-        cv2.putText(bg_removed_gray, f"fps{int(fps)}", (7, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 1, cv2.LINE_AA)
-        _, JPEG = cv2.imencode(".jpg", bg_removed_gray, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+        black_color = 0
+        # depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
+
+        bg_removed_gray = np.where((depth_image > clipping_distance) | (depth_image <= 0), black_color, gray_image)
+
+        # new_frame_time = time.time()
+        # fps = 1 / (new_frame_time - prev_frame_time)
+        # prev_frame_time = new_frame_time
+        # cv2.putText(bg_removed_gray, f"fps{int(fps)}", (7, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 1, cv2.LINE_AA)
+        ##########################################################################################################################################################
+        # mix bg_removed_gray and depth_image but need 3_dim shape so put a zero matrix
+        # bg_removed_gray_depth shape is 640 * 480 * 3
+        # bg_removed_gray is bg_removed_gray_depth[:, :, 0]
+        # depth_image is bg_removed_gray_depth[:, :, 1]
+        # bg_removed_gray_depth = np.stack((bg_removed_gray, np.uint8(depth_image), np.uint8(depth_image)),
+        #                                  axis=2)
+        # depth_image = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+        bg_removed_gray_depth = np.append(bg_removed_gray, depth_image, axis=0)
+        # _, JPEG = cv2.imencode(".jpg", bg_removed_gray_depth, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+        _, JPEG = cv2.imencode(".jpg", bg_removed_gray_depth, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
         JPEG.tofile('DEBUG-original.jpg')
         b64 = b64encode(JPEG)
         message = {"image": b64.decode("utf-8")}
@@ -127,12 +139,14 @@ try:
         # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
         # images = np.hstack((bg_removed, depth_colormap))
 
-        cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
-        cv2.imshow('Align Example', bg_removed_gray)
-        key = cv2.waitKey(1)
-        # Press esc or 'q' to close the image window
-        if key & 0xFF == ord('q') or key == 27:
-            cv2.destroyAllWindows()
-            break
+        # cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
+
+        # cv2.imshow('JPEG', JPEG)
+        #
+        # key = cv2.waitKey(1)
+        # # Press esc or 'q' to close the image window
+        # if key & 0xFF == ord('q') or key == 27:
+        #     cv2.destroyAllWindows()
+        #     break
 finally:
     pipeline.stop()
