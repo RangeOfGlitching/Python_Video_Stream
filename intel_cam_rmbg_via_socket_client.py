@@ -1,17 +1,31 @@
-import socket
+## License: Apache 2.0. See LICENSE file in root directory.
+## Copyright(c) 2017 Intel Corporation. All Rights Reserved.
+
+#####################################################
+##              Align Depth to Color               ##
+#####################################################
+
+# First import the library
 import time
 
 import pyrealsense2 as rs
+# Import Numpy for easy array manipulation
 import numpy as np
+# Import OpenCV for easy image rendering
 import cv2
-from base64 import b64encode
+
+#########################################################################
+import socket
+import threading
+import sys
+from base64 import b64decode, b64encode
 import json
 
-from numpy import uint8
-
+# socket
 HEADER = 64
 PORT = 5050
-SERVER = "192.168.50.98"
+# SERVER = "192.168.50.98"
+SERVER = "192.168.50.149"
 FORMAT = "utf-8"
 DISCONNECT_MSG = "!DISCONNECTED"
 ADDRESS = (SERVER, PORT)
@@ -20,11 +34,13 @@ client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDRESS)
 
 
+#########################################################################
 def send(msg):
     # b'msg'
     message = msg.encode(FORMAT)
     # 10(string len)
     msg_length = len(message)
+    print(f"msg_length {msg_length}")
     # b'10'
     send_length = str(msg_length).encode(FORMAT)
     # b' ' * (64-2) => b'10                              '
@@ -33,10 +49,7 @@ def send(msg):
     client.send(message)
 
 
-prev_frame_time = 0
-# used to record the time at which we processed current frame
-new_frame_time = 0
-
+#########################################################################
 
 # Create a pipeline
 pipeline = rs.pipeline()
@@ -77,7 +90,7 @@ print("Depth Scale is: ", depth_scale)
 
 # We will be removing the background of objects more than
 #  clipping_distance_in_meters meters away
-clipping_distance_in_meters = 2  # 1 meter
+clipping_distance_in_meters = 1  # 1 meter
 clipping_distance = clipping_distance_in_meters / depth_scale
 
 # Create an align object
@@ -106,47 +119,33 @@ try:
 
         depth_image = np.asanyarray(aligned_depth_frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
-        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-        # Remove background - Set pixels further than clipping_distance to black
 
-        black_color = 0
-        # depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
+        # Remove background - Set pixels further than clipping_distance to grey
+        grey_color = 153
+        depth_image_3d = np.dstack(
+            (depth_image, depth_image, depth_image))  # depth image is 1 channel, color is 3 channels
+        bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, color_image)
 
-        bg_removed_gray = np.where((depth_image > clipping_distance) | (depth_image <= 0), black_color, gray_image)
-
-        # new_frame_time = time.time()
-        # fps = 1 / (new_frame_time - prev_frame_time)
-        # prev_frame_time = new_frame_time
-        # cv2.putText(bg_removed_gray, f"fps{int(fps)}", (7, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 1, cv2.LINE_AA)
-        ##########################################################################################################################################################
-        # mix bg_removed_gray and depth_image but need 3_dim shape so put a zero matrix
-        # bg_removed_gray_depth shape is 640 * 480 * 3
-        # bg_removed_gray is bg_removed_gray_depth[:, :, 0]
-        # depth_image is bg_removed_gray_depth[:, :, 1]
-        # bg_removed_gray_depth = np.stack((bg_removed_gray, np.uint8(depth_image), np.uint8(depth_image)),
-        #                                  axis=2)
-        # depth_image = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-        bg_removed_gray_depth = np.append(bg_removed_gray, depth_image, axis=0)
-        # _, JPEG = cv2.imencode(".jpg", bg_removed_gray_depth, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-        _, JPEG = cv2.imencode(".jpg", bg_removed_gray_depth, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-        JPEG.tofile('DEBUG-original.jpg')
-        b64 = b64encode(JPEG)
-        message = {"image": b64.decode("utf-8")}
-        messageJSON = json.dumps(message)
-
-        send(messageJSON)
         # Render images:
         #   depth align to color on left
         #   depth on right
-        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-        # images = np.hstack((bg_removed, depth_colormap))
+        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+        images = np.hstack((bg_removed, depth_colormap))
 
+        #########################################################################
+        _, JPEG = cv2.imencode(".jpg", images, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+        JPEG.tofile('DEBUG-original.jpg')
+        b64 = b64encode(JPEG)
+        msg = {"image": b64.decode("utf-8")}
+        msgJSON = json.dumps(msg)
+        # a = input()
+        send(msgJSON)
+
+        #########################################################################
         # cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
-
-        # cv2.imshow('JPEG', JPEG)
-        #
+        # cv2.imshow('Align Example', images)
         # key = cv2.waitKey(1)
-        # # Press esc or 'q' to close the image window
+        # Press esc or 'q' to close the image window
         # if key & 0xFF == ord('q') or key == 27:
         #     cv2.destroyAllWindows()
         #     break
