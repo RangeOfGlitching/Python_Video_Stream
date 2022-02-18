@@ -5,7 +5,7 @@ import cv2
 import json
 HEADER = 64
 PORT = 5050
-SERVER = "192.168.50.194"
+SERVER = "192.168.1.112"
 FORMAT = "utf-8"
 DISCONNECT_MSG = "!DISCONNECTED"
 ADDR = (SERVER, PORT)
@@ -19,15 +19,18 @@ def send(msg):
     message = msg.encode(FORMAT)
     # 10(string len)
     msg_length = len(message)
+    print(f"msg_length {msg_length}")
     # b'10'
     send_length = str(msg_length).encode(FORMAT)
     # b' ' * (64-2) => b'10                              '
     send_length += b' ' * (HEADER - len(send_length))
+
+    print(f"message {message}")
     client.send(send_length)
     client.send(message)
 
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 prev_frame_time = 0
 # used to record the time at which we processed current frame
 new_frame_time = 0
@@ -48,9 +51,13 @@ while True:
     messageJSON = json.dumps(message)
     send(messageJSON)
     # cv2.imshow("Stream", frame)
-    key = cv2.waitKey(1)
-    if key == 27:
-        break
+    # key = cv2.waitKey(0)
+
+
+
+
+    # if key == 27:
+    #     break
 
 cap.release()
 cv2.destroyAllWindows()
