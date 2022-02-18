@@ -19,13 +19,13 @@ def send(msg):
     message = msg.encode(FORMAT)
     # 10(string len)
     msg_length = len(message)
-    print(f"msg_length {msg_length}")
+
     # b'10'
     send_length = str(msg_length).encode(FORMAT)
     # b' ' * (64-2) => b'10                              '
     send_length += b' ' * (HEADER - len(send_length))
-
-    print(f"message {message}")
+    # print(f"msg_length {msg_length}")
+    # print(f"message {message}")
     client.send(send_length)
     client.send(message)
 
