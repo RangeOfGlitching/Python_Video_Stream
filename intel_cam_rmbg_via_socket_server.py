@@ -5,7 +5,7 @@ import sys
 from base64 import b64decode
 import cv2
 import json
-# from simple_facerec import SimpleFacerec
+
 
 #########################################################################
 # socket
@@ -15,7 +15,7 @@ PORT = 5050
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDRESS = (SERVER, PORT)
 FORMAT_LENGTH = "utf-8"
-FORMAT = "ascii"
+FORMAT = "utf-8"
 DISCONNECT_MSG = "!DISCONNECTED"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,19 +40,18 @@ def handle_client(conn, addr):
 
     connected = True
     while connected:
-        flage = False
-        msg_length = conn.recv(HEADER).decode(FORMAT_LENGTH)
+        msg_length = conn.recv(HEADER).decode(FORMAT)
         if msg_length:
             msg_length = int(msg_length)
             msg = conn.recv(msg_length).decode(FORMAT)
             len_msg = len(msg)
             print(f"msg_length {msg_length}")
             if msg_length != len_msg:
-                print(f"not match {len_msg}")
+                print(f"    not match {len_msg}")
                 remain_data_size = msg_length - len_msg
                 while int(msg_length) != int(len_msg):
                     msg_compensation = conn.recv(remain_data_size).decode(FORMAT)
-                    print(f"remain_data_size {remain_data_size}")
+                    print(f"    remain_data_size {remain_data_size}")
                     # print(f"msg_compensation [len({len(msg_compensation)}){msg_compensation}]")
                     msg += msg_compensation
                     len_msg = len(msg)
