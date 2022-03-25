@@ -1,14 +1,19 @@
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+from datetime import datetime
+
 
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-color_path = 'V00P00A00C00_rgb.avi'
-depth_path = 'V00P00A00C00_depth.avi'
+now = datetime.now()
+current_time = now.strftime("%H_%M_%S")
+color_path = current_time + '_rgb.avi'
+depth_path = current_time + '_depth.avi'
+
 colorWriter = cv2.VideoWriter(color_path, cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480), 1)
 # depthWriter = cv2.VideoWriter(depth_path, cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480), 1)
 
