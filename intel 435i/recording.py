@@ -36,6 +36,7 @@ try:
         # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
         colorWriter.write(color_image)
+        color_image = cv2.rotate(color_image, cv2.ROTATE_180) #rotate image
         # depthWriter.write(depth_colormap)
 
         cv2.imshow('Stream', color_image)
