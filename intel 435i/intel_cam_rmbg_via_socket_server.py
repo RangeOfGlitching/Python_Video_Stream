@@ -6,7 +6,6 @@ from base64 import b64decode
 import cv2
 import json
 
-
 #########################################################################
 # socket
 HEADER = 64
@@ -20,6 +19,8 @@ DISCONNECT_MSG = "!DISCONNECTED"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDRESS)
+
+
 #########################################################################
 #########################################################################
 # stream_fac_rec
@@ -40,27 +41,25 @@ def handle_client(conn, addr):
 
     connected = True
     while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length:
-            msg_length = int(msg_length)
-            msg = conn.recv(msg_length).decode(FORMAT)
-            len_msg = len(msg)
-            print(f"msg_length {msg_length}")
-            if msg_length != len_msg:
-                print(f"    not match {len_msg}")
-                remain_data_size = msg_length - len_msg
-                while int(msg_length) != int(len_msg):
-                    msg_compensation = conn.recv(remain_data_size).decode(FORMAT)
-                    print(f"    remain_data_size {remain_data_size}")
-                    # print(f"msg_compensation [len({len(msg_compensation)}){msg_compensation}]")
-                    msg += msg_compensation
-                    len_msg = len(msg)
-                    remain_data_size = msg_length - len_msg
+        desireMsgLength = conn.recv(HEADER).decode(FORMAT)
+        if desireMsgLength:
+            desireMsgLength = int(desireMsgLength)
+            msg = conn.recv(desireMsgLength).decode(FORMAT)
+            realMshLength = len(msg)
+            # print(f"msg_length {desireMsgLength}")
+            # print(f"    not match {realMshLength}")
+            while desireMsgLength > realMshLength:
+                remain_data_size = desireMsgLength - realMshLength
+                msg_compensation = conn.recv(remain_data_size).decode(FORMAT)
+                # print(f"    remain_data_size {remain_data_size}")
+                # print(f"msg_compensation [len({len(msg_compensation)}){msg_compensation}]")
+                msg += msg_compensation
+                realMshLength = len(msg)
 
-                    if len_msg > msg_length:
-                        print("overload")
-                        print(msg)
-                        assert False
+                if realMshLength > desireMsgLength:
+                    print("overload")
+                    print(msg)
+                    assert False
             if msg == DISCONNECT_MSG:
                 connected = False
 
