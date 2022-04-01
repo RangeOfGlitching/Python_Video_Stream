@@ -6,8 +6,8 @@ from datetime import datetime
 
 pipeline = rs.pipeline()
 config = rs.config()
-config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+config.enable_stream(rs.stream.depth,1280,720, rs.format.z16, 30)
+config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 # (1280,720)
 
 now = datetime.now()
@@ -15,7 +15,7 @@ current_time = now.strftime("%H_%M_%S")
 color_path = current_time + '_rgb.avi'
 depth_path = current_time + '_depth.avi'
 
-colorWriter = cv2.VideoWriter(color_path, cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480), 1)
+colorWriter = cv2.VideoWriter(color_path, cv2.VideoWriter_fourcc(*'XVID'), 25, (1280, 720), 1)
 # depthWriter = cv2.VideoWriter(depth_path, cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480), 1)
 
 pipeline.start(config)
@@ -35,14 +35,15 @@ try:
         color_image = np.asanyarray(color_frame.get_data())
         # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
-        colorWriter.write(color_image)
+       
         color_image = cv2.rotate(color_image, cv2.ROTATE_180) #rotate image
         # depthWriter.write(depth_colormap)
+        colorWriter.write(color_image)
 
-        cv2.imshow('Stream', color_image)
+        # cv2.imshow('Stream', color_image)
 
-        if cv2.waitKey(1) == ord("q"):
-            break
+        # if cv2.waitKey(1) == ord("q"):
+        #     break
 finally:
     colorWriter.release()
     # depthWriter.release()
